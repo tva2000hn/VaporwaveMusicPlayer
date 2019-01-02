@@ -1,0 +1,958 @@
+package com.tk.lolirem.vapormusic;
+
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.res.TypedArray;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.MediaPlayer;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.PersistableBundle;
+import android.provider.MediaStore;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.text.format.Time;
+import android.util.Log;
+import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+
+import com.futuremind.recyclerviewfastscroll.FastScroller;
+import com.tk.lolirem.vapormusic.R;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import static android.os.Build.VERSION.SDK_INT;
+
+public class MainActivity extends AppCompatActivity {
+    public int play = 0;
+    public static final int REQUEST_ID_MULTIPLE_PERMISSIONS = 1;
+    public static final String Broadcast_PLAY_NEW_AUDIO = "com.tk.lolirem.vapormusic.PlayNewAudio";
+    public Bitmap albumart;
+    public static boolean isActivityVisible() {
+        return activityVisible;
+    }
+
+    public static void activityResumed() {
+        activityVisible = true;
+    }
+
+    public static void activityPaused() {
+        activityVisible = false;
+    }
+
+    private static boolean activityVisible;
+
+    private MediaPlayerService player;
+    boolean serviceBound = false;
+    ArrayList<Audio> audioList;
+    boolean  b ;
+    int b1 = 0;
+    ImageView collapsingImageView;
+    RecyclerView_Adapter adapter;
+
+
+    int imageIndex = 0;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        MediaPlayer mp = MediaPlayer.create(this, R.raw.win95);
+        mp.start();
+        setContentView(R.layout.activity_main);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        collapsingImageView = (ImageView) findViewById(R.id.collapsingImageView);
+        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerview);
+        FastScroller fastScroller = (FastScroller) findViewById(R.id.fastscroll);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+
+        //has to be called AFTER RecyclerView.setAdapter()
+        fastScroller.setRecyclerView(recyclerView);
+
+        fastScroller.setHandleColor(0xFF404040);
+        fastScroller.setBubbleTextAppearance(R.style.StyledScrollerTextAppearance);
+
+
+        //runs without a timer by reposting this handler at the end of the runnable
+
+        loadCollapsingImage(imageIndex);
+        IntentFilter iF2 = new IntentFilter();
+
+        iF2.addAction("NOTIFICATION_CHANGED1");
+
+        registerReceiver(mReceiver2, iF2);
+        IntentFilter iF3 = new IntentFilter();
+
+        iF3.addAction("PLAY_TIME");
+
+        registerReceiver(mReceiver3, iF3);
+
+        Button button10  = (Button) findViewById(R.id.button5);
+
+        final FrameLayout playlistlo = (FrameLayout) findViewById(R.id.playlist1);
+        final RelativeLayout playlistli = (RelativeLayout) findViewById(R.id.hello3);
+        button10.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (playlistlo.getVisibility() == View.VISIBLE)
+                                {
+                                    playlistlo.setVisibility(View.INVISIBLE);
+                                    playlistli.setVisibility(View.INVISIBLE);
+
+                                }
+                                else
+                                {
+                                    playlistlo.setVisibility(View.VISIBLE);
+                                    playlistli.setVisibility(View.VISIBLE);
+
+
+                                }
+                                if (b1 == 0) {
+
+                                      b1 = b1 + 1;
+                                }
+
+                            }
+                        }
+                );
+        Button button11  = (Button) findViewById(R.id.button7);
+
+        button11.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (playlistlo.getVisibility() == View.VISIBLE)
+                                {
+                                    playlistlo.setVisibility(View.INVISIBLE);
+                                    playlistli.setVisibility(View.INVISIBLE);
+
+
+                                }
+                                else
+                                {
+                                    playlistlo.setVisibility(View.VISIBLE);
+                                    playlistli.setVisibility(View.VISIBLE);
+
+                                }
+                            }
+                        }
+                );
+
+        final Button button12 = (Button) findViewById(R.id.button10);
+        final Button button15 = (Button) findViewById(R.id.button9);
+        button12.setOnClickListener( new View.OnClickListener()
+        {
+            public void onClick(View v)
+            {
+
+                if (player.mediaPlayer == null) return;
+                    if (player.mediaPlayer.isPlaying() ) {
+                    player.mediaPlayer.pause();
+                    player.resumePosition = player.mediaPlayer.getCurrentPosition();
+                    player.buildNotification(PlaybackStatus.PAUSED);
+                    button15.setVisibility(Button.VISIBLE);
+                    button12.setVisibility(Button.INVISIBLE);
+                    player.timer();
+                    player.pausemxm();
+                        player.mediaSession.setPlaybackState(new 	PlaybackStateCompat.Builder ()
+                                .setState(PlaybackStateCompat.STATE_PAUSED,player.resumePosition,0.0f).build());
+
+                }
+
+
+
+
+
+
+            }});
+
+        final Button button16 = (Button) findViewById(R.id.button11);
+        button16.setOnClickListener( new View.OnClickListener()
+        {
+            public void onClick(View v)
+            {
+                Toast.makeText(MainActivity.this,
+                        "Please select any song from the playlist!", Toast.LENGTH_SHORT).show();
+
+
+
+
+
+
+
+            }});
+        button15.setOnClickListener( new View.OnClickListener()
+        {
+            public void onClick(View v)
+            {
+
+                if (!player.mediaPlayer.isPlaying()) {
+                    player.mediaPlayer.seekTo(player.resumePosition);
+                    player.mediaPlayer.start();
+                    player.buildNotification(PlaybackStatus.PLAYING);
+                   button12.setVisibility(Button.VISIBLE);
+                   button15.setVisibility(Button.INVISIBLE);
+                    player.timer();
+                    player.mediaSession.setPlaybackState(new 	PlaybackStateCompat.Builder ()
+                            .setState(PlaybackStateCompat.STATE_PLAYING,player.resumePosition,1.0f).build());
+
+                }
+
+
+
+
+
+
+
+            }});
+
+
+        final Button button13 = (Button) findViewById(R.id.button9a);
+        button13.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                player.skipToPrevious();
+                                player.updateMetaData();
+                                player.buildNotification(PlaybackStatus.PLAYING);
+                                player.timer();
+                                button12.setVisibility(Button.VISIBLE);
+                                button15.setVisibility(Button.INVISIBLE);
+
+                            }
+                        });
+        final Button button14 = (Button) findViewById(R.id.button9b);
+        button14.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                player.skipToNext();
+                                player.updateMetaData();
+                                player.buildNotification(PlaybackStatus.PLAYING);
+                                button12.setVisibility(Button.VISIBLE);
+                                button15.setVisibility(Button.INVISIBLE);
+                                player.timer();
+                            }
+                        });
+
+        final Button button4i = (Button) findViewById(R.id.hidenp);
+        final Button button4i2 = (Button) findViewById(R.id.shownp);
+
+        final FrameLayout frame1 = (FrameLayout) findViewById(R.id.frame1);
+        final FrameLayout frame2 = (FrameLayout) findViewById(R.id.frame2);
+        final FrameLayout frame3 = (FrameLayout) findViewById(R.id.frame3);
+        final FrameLayout frame4 = (FrameLayout) findViewById(R.id.frame4);
+        final FrameLayout frame5 = (FrameLayout) findViewById(R.id.frame5);
+        final FrameLayout framex = (FrameLayout) findViewById(R.id.framex);
+        button4i.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (frame5.getVisibility() == View.VISIBLE) {
+                                    frame1.setVisibility(View.INVISIBLE);
+                                    frame2.setVisibility(View.INVISIBLE);
+                                    frame3.setVisibility(View.INVISIBLE);
+                                    frame4.setVisibility(View.INVISIBLE);
+                                    frame5.setVisibility(View.INVISIBLE);
+                                    framex.setVisibility(View.VISIBLE);
+                                }
+
+                            }
+                        });
+        button4i2.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (framex.getVisibility() == View.VISIBLE) {
+                                    frame1.setVisibility(View.VISIBLE);
+                                    frame2.setVisibility(View.VISIBLE);
+                                    frame3.setVisibility(View.VISIBLE);
+                                    frame4.setVisibility(View.VISIBLE);
+                                    frame5.setVisibility(View.VISIBLE);
+                                    framex.setVisibility(View.INVISIBLE);
+                                }
+
+                            }
+                        });
+
+        final Button about = (Button) findViewById(R.id.button8);
+        final Button settings = (Button) findViewById(R.id.button6);
+        final FrameLayout aboutpage = (FrameLayout) findViewById(R.id.aboutpage);
+        final Button buttonxxx = (Button) findViewById(R.id.hideabout);
+        about.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (aboutpage.getVisibility() == View.INVISIBLE) {
+                                    aboutpage.setVisibility(View.VISIBLE);
+
+                                }
+
+
+                            }
+                        });
+        buttonxxx.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+
+                                if (aboutpage.getVisibility() == View.VISIBLE) {
+                                    aboutpage.setVisibility(View.INVISIBLE);
+
+                                }
+
+                            }
+                        });
+        settings.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+
+                                Intent intent = new Intent();
+                                intent.setAction("android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL");
+                                startActivityForResult(intent, 1);
+
+                            }
+                        });
+
+        final Button seekbt = (Button) findViewById(R.id.button12);
+        final FrameLayout seekpage = (FrameLayout) findViewById(R.id.seekpage);
+        final FrameLayout modepage = (FrameLayout) findViewById(R.id.mode_menu);
+
+
+        seekbt.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+
+                                if (seekpage.getVisibility() == View.INVISIBLE) {
+                                    seekpage.setVisibility(View.VISIBLE);
+                                    modepage.setVisibility(View.INVISIBLE);
+                                }
+                                if (play == 0 ) {
+                                    seekpage.setVisibility(View.INVISIBLE);
+                                    Toast.makeText(MainActivity.this,
+                                            "No song currenlty playing!", Toast.LENGTH_SHORT).show();
+
+
+                                }
+                                    else{InputMethodManager imm = (InputMethodManager)
+                                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                                    imm.toggleSoftInput(0, InputMethodManager.SHOW_FORCED);}
+
+                            }
+                        });
+
+
+
+        final EditText edittext = (EditText) findViewById(R.id.edittext);
+
+        edittext.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+
+                if (edittext.getText().length() == 2) {
+                    edittext.setText(edittext.getText() + ":");
+                    edittext.setSelection(edittext.getText().length());
+                }
+                if (edittext.getText().length() == 5) {
+                    seekpage.setVisibility(View.INVISIBLE);
+
+
+                    SimpleDateFormat seekstring = new SimpleDateFormat("mm:ss", Locale.ENGLISH);
+                    String seekposition = edittext.getText().toString();
+                    String[] parts = seekposition.split(":");
+                    String part1 = parts[0];
+                    String part2 = parts[1];
+                    int minutes1 = Integer.parseInt(part1) * 60000 ;
+                    int seconds1 = Integer.parseInt(part2) * 1000;
+                    int time = minutes1 + seconds1;
+                    String timestring = String.valueOf(time);
+                    Long timeinlong = Long.parseLong(timestring);
+                    Log.d("seektime",seekposition);
+                    Log.d("seektime2",timestring);
+
+
+                        if (time < player.mediaPlayer.getDuration()){
+                        player.mediaPlayer.seekTo(time);
+                        player.mediaPlayer.start();
+                        player.buildNotification(PlaybackStatus.PLAYING);
+                        button12.setVisibility(Button.VISIBLE);
+                        button15.setVisibility(Button.INVISIBLE);
+                        player.timer();
+                        player.mediaSession.setPlaybackState(new 	PlaybackStateCompat.Builder ()
+                                .setState(PlaybackStateCompat.STATE_PLAYING,time,1.0f).build());
+                            edittext.getText().clear();
+                            InputMethodManager imm = (InputMethodManager)
+                                    getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+                            modepage.setVisibility(View.INVISIBLE);
+
+                    }
+                     else {
+                        seekpage.setVisibility(View.VISIBLE);
+                        Toast.makeText(MainActivity.this,
+                                "Invalid time!", Toast.LENGTH_SHORT).show();
+                            edittext.getText().clear();
+
+                    }
+
+
+
+
+
+
+
+
+                }
+
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+        });
+
+
+        if (checkAndRequestPermissions()) {
+            loadAudioList();
+        }
+        final Button mode = (Button) findViewById(R.id.button7b);
+
+        final Button closemode= (Button) findViewById(R.id.button15);
+
+        mode.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+                                if (modepage.getVisibility() == View.INVISIBLE) {
+                                   modepage.setVisibility(View.VISIBLE);
+
+                                }
+
+
+                            }
+                        });
+        closemode.setOnClickListener
+                (
+                        new View.OnClickListener()
+                        {
+                            public void onClick(View v)
+                            {
+
+                                if (modepage.getVisibility() == View.VISIBLE) {
+                                    modepage.setVisibility(View.INVISIBLE);
+
+                                }
+
+                            }
+                        });
+
+
+
+
+
+
+
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                playAudio("https://upload.wikimedia.org/wikipedia/commons/6/6c/Grieg_Lyric_Pieces_Kobold.ogg");
+                //play the first audio in the ArrayList
+//                playAudio(2);
+                if (imageIndex == 4) {
+                    imageIndex = 0;
+                    loadCollapsingImage(imageIndex);
+                } else {
+                    loadCollapsingImage(++imageIndex);
+                }
+            }
+        });
+        IntentFilter iF = new IntentFilter();
+        iF.addAction("datatransfer");
+
+
+        registerReceiver(mReceiver, iF);
+
+
+
+    }
+
+    private void loadAudioList() {
+        loadAudio();
+        initRecyclerView();
+
+    }
+    public void hidebutton() {
+
+        if (player.a2 == null) return;
+        if (player.a2 == true) {
+            Button button12a = (Button) findViewById(R.id.button10);
+            Button button15a = (Button) findViewById(R.id.button9);
+            Button button16a = (Button) findViewById(R.id.button11);
+            button15a.setVisibility(Button.VISIBLE);
+            button12a.setVisibility(Button.INVISIBLE);
+            button16a.setVisibility(Button.INVISIBLE);
+
+        }
+        if (player.a2 == false) {
+            Button button12a = (Button) findViewById(R.id.button10);
+            Button button15a = (Button) findViewById(R.id.button9);
+            Button button16a = (Button) findViewById(R.id.button11);
+            button15a.setVisibility(Button.INVISIBLE);
+            button12a.setVisibility(Button.VISIBLE);
+            button16a.setVisibility(Button.INVISIBLE);
+        }
+
+    }
+
+
+    private boolean checkAndRequestPermissions() {
+        if (SDK_INT >= Build.VERSION_CODES.M) {
+            int permissionReadPhoneState = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE);
+            int permissionStorage = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+            List<String> listPermissionsNeeded = new ArrayList<>();
+
+            if (permissionReadPhoneState != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(Manifest.permission.READ_PHONE_STATE);
+            }
+
+            if (permissionStorage != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+
+            if (!listPermissionsNeeded.isEmpty()) {
+                ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), REQUEST_ID_MULTIPLE_PERMISSIONS);
+                return false;
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+
+        String TAG = "LOG_PERMISSION";
+        Log.d(TAG, "Permission callback called-------");
+
+        switch (requestCode) {
+            case REQUEST_ID_MULTIPLE_PERMISSIONS: {
+
+                Map<String, Integer> perms = new HashMap<>();
+                // Initialize the map with both permissions
+                perms.put(Manifest.permission.READ_PHONE_STATE, PackageManager.PERMISSION_GRANTED);
+                perms.put(Manifest.permission.READ_EXTERNAL_STORAGE, PackageManager.PERMISSION_GRANTED);
+                // Fill with actual results from user
+                if (grantResults.length > 0) {
+                    for (int i = 0; i < permissions.length; i++)
+                        perms.put(permissions[i], grantResults[i]);
+                    // Check for both permissions
+
+                    if (perms.get(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+                            && perms.get(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                        Log.d(TAG, "Phone state and storage permissions granted");
+                        // process the normal flow
+                        //else any one or both the permissions are not granted
+                        loadAudioList();
+                    } else {
+                        Log.d(TAG, "Some permissions are not granted ask again ");
+                        //permission is denied (this is the first time, when "never ask again" is not checked) so ask again explaining the usage of permission
+//                      //shouldShowRequestPermissionRationale will return true
+                        //show the dialog or snackbar saying its necessary and try again otherwise proceed with setup.
+                        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE) ||
+                                ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_PHONE_STATE)) {
+                            showDialogOK("Phone state and storage permissions required for this app",
+                                    new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            switch (which) {
+                                                case DialogInterface.BUTTON_POSITIVE:
+                                                    checkAndRequestPermissions();
+                                                    break;
+                                                case DialogInterface.BUTTON_NEGATIVE:
+                                                    // proceed with logic by disabling the related features or quit the app.
+                                                    break;
+                                            }
+                                        }
+                                    });
+                        }
+                        //permission is denied (and never ask again is  checked)
+                        //shouldShowRequestPermissionRationale will return false
+                        else {
+                            Toast.makeText(this, "Go to settings and enable permissions", Toast.LENGTH_LONG)
+                                    .show();
+                            //proceed with logic by disabling the related features or quit the app.
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    private void showDialogOK(String message, DialogInterface.OnClickListener okListener) {
+        new AlertDialog.Builder(this)
+                .setMessage(message)
+                .setPositiveButton("OK", okListener)
+                .setNegativeButton("Cancel", okListener)
+                .create()
+                .show();
+    }
+
+
+    private void initRecyclerView() {
+        if (audioList != null && audioList.size() > 0) {
+            RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerview);
+            RecyclerView_Adapter adapter = new RecyclerView_Adapter(audioList, getApplication());
+            recyclerView.setAdapter(adapter);
+            recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            recyclerView.addOnItemTouchListener(new CustomTouchListener(this, new onItemClickListener() {
+                @Override
+                public void onClick(View view, int index) {
+                    playAudio(index);
+                }
+            }));
+        }
+    }
+
+    private void loadCollapsingImage(int i) {
+        TypedArray array = getResources().obtainTypedArray(R.array.images);
+        collapsingImageView.setImageDrawable(array.getDrawable(i));
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+        outState.putBoolean("serviceStatus", serviceBound);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        serviceBound = savedInstanceState.getBoolean("serviceStatus");
+    }
+
+    //Binding this Client to the AudioPlayer Service
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            MediaPlayerService.LocalBinder binder = (MediaPlayerService.LocalBinder) service;
+            player = binder.getService();
+            serviceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
+    public BroadcastReceiver mReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+
+            String action = intent.getAction();
+            String cmd = intent.getStringExtra("command");
+            Log.d("mIntentReceiver.onRece ", action + " / " + cmd);
+            String artist = intent.getStringExtra("artist1");
+            String album = intent.getStringExtra("album1");
+            String track = intent.getStringExtra("track1");
+            String length = intent.getStringExtra("length1");
+            String stringUri = intent.getStringExtra("uri1");
+            Log.d("Music",artist+":"+album+":"+track+":"+stringUri+":"+length);
+            TextView textView1 = (TextView) findViewById(R.id.track1);
+            textView1.setText(track);
+            TextView textView2 =  (TextView)  findViewById(R.id.artist1);
+            textView2.setText(artist);
+            TextView textView3 =  (TextView)  findViewById(R.id.time2);
+            textView3.setText(length);
+
+            //get the song's id from intent
+            ImageView mainImage = (ImageView) findViewById(R.id.albumart);
+
+            Uri uri;
+            uri = Uri.parse(stringUri);
+            mainImage.setImageURI(uri);
+
+
+        }
+    };
+    private BroadcastReceiver mReceiver2 = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive (Context context, Intent intent)
+        {
+
+            String pause = intent.getStringExtra("playmode");
+            String hideplaybutton = intent.getStringExtra("playmode2");
+
+            String action = intent.getAction();
+            String cmd = intent.getStringExtra("command");
+            Log.d("mIntentReceiver.on", action + " / " + cmd);
+
+
+            Log.d("Pause",pause);
+            Log.d("hideplay",hideplaybutton);
+
+            hidebutton();
+
+
+
+        }
+    };
+    private BroadcastReceiver mReceiver3 = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive (Context context, Intent intent)
+        {
+            Boolean playing;
+            String pause = intent.getStringExtra("playmode");
+            String playtime = intent.getStringExtra("position1");
+            String length = intent.getStringExtra("duration1");
+            Boolean paused = intent.getBooleanExtra("paused", false);
+            String action = intent.getAction();
+            TextView tv = (TextView) findViewById(R.id.time);
+            tv.setText(playtime);
+            String cmd = intent.getStringExtra("command");
+            Log.d("mIntentReceiver.on", action + " / " + cmd);
+
+
+
+            Log.d("time:",playtime);
+            if (playtime.equals(length)){
+                player.skipToNext();
+                player.updateMetaData();
+                player.buildNotification(PlaybackStatus.PLAYING);
+            }
+
+
+
+
+
+        }
+    };
+
+    private void playAudio(int audioIndex) {
+        //Check is service is active
+        if (!serviceBound) {
+            //Store Serializable audioList to SharedPreferences
+            StorageUtil storage = new StorageUtil(getApplicationContext());
+            storage.storeAudio(audioList);
+            storage.storeAudioIndex(audioIndex);
+
+            Intent playerIntent = new Intent(this, MediaPlayerService.class);
+            startService(playerIntent);
+            bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+        } else {
+            //Store the new audioIndex to SharedPreferences
+            StorageUtil storage = new StorageUtil(getApplicationContext());
+            storage.storeAudioIndex(audioIndex);
+
+
+            //Service is active
+            //Send a broadcast to the service -> PLAY_NEW_AUDIO
+            Intent broadcastIntent = new Intent(Broadcast_PLAY_NEW_AUDIO);
+            sendBroadcast(broadcastIntent);
+
+        }
+
+        Button button13a = (Button) findViewById(R.id.button9a);
+        Button button13a2 = (Button) findViewById(R.id.button9a2);
+        Button button13a3 = (Button) findViewById(R.id.button9a3);
+        Button button13a4 = (Button) findViewById(R.id.button9a4);
+        Button button13b = (Button) findViewById(R.id.button9b);
+        Button button13b2 = (Button) findViewById(R.id.button9b2);
+        Button button13b3 = (Button) findViewById(R.id.button9b3);
+        Button button13b4 = (Button) findViewById(R.id.button9b4);
+        Button button12x = (Button) findViewById(R.id.button10);
+        Button button15x = (Button) findViewById(R.id.button9);
+        Button button16b = (Button) findViewById(R.id.button11);
+        Button button16b2 = (Button) findViewById(R.id.button12a);
+        Button button16b3 = (Button) findViewById(R.id.button12a2);
+        Button button16b4 = (Button) findViewById(R.id.button12a3);
+
+        button13a.setVisibility(Button.VISIBLE);
+        button13a2.setVisibility(Button.VISIBLE);
+        button13a3.setVisibility(Button.VISIBLE);
+        button13a4.setVisibility(Button.VISIBLE);
+
+
+        button13b.setVisibility(Button.VISIBLE);
+        button13b2.setVisibility(Button.VISIBLE);
+        button13b3.setVisibility(Button.VISIBLE);
+        button13b4.setVisibility(Button.VISIBLE);
+
+        button12x.setVisibility(Button.VISIBLE);
+        button15x.setVisibility(Button.INVISIBLE);
+
+        button16b.setVisibility(Button.INVISIBLE);
+        button16b2.setVisibility(Button.INVISIBLE);
+        button16b3.setVisibility(Button.INVISIBLE);
+        button16b4.setVisibility(Button.INVISIBLE);
+        play = 1;
+
+    }
+
+
+    /**
+     * Load audio files using {@link ContentResolver}
+     *
+     * If this don't works for you, load the audio files to audioList Array your oun way
+     */
+    private void loadAudio() {
+        ContentResolver contentResolver = getContentResolver();
+
+        Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+        String selection = MediaStore.Audio.Media.IS_MUSIC + "!= 0";
+        String sortOrder = MediaStore.Audio.Media.TITLE + " ASC";
+
+        Cursor cursor = contentResolver.query(uri, null, selection, null, sortOrder);
+
+        if (cursor != null && cursor.getCount() > 0) {
+            audioList = new ArrayList<>();
+            while (cursor.moveToNext()) {
+                String data = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+                String title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
+                String album = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM));
+                String artist = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST));
+                String duration = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION));
+
+                // Save to audioList
+                audioList.add(new Audio(data, title, album, artist, duration));
+            }
+        }
+        if (cursor != null)
+            cursor.close();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        MainActivity.activityResumed();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        MainActivity.activityPaused();
+    }
+
+    @Override
+    public void onBackPressed() {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_HOME);
+        startActivity(intent);
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            //service is active
+            player.stopSelf();
+        }}
+
+
+}

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardview"
+    android:layout_width="match_parent"
+    android:layout_height="70dp"
+    android:background="@color/win95"
+    android:elevation="100dp"
+    android:visibility="visible"
+    app:cardBackgroundColor="@color/win95"
+    app:cardElevation="0dp">
+
+    <!--android:background="#00bcd4"-->
+
+    <FrameLayout
+        android:id="@+id/hello2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/artist2"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="match_parent">
+
+                <TextView
+                    android:id="@+id/oneletter"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginBottom="11dp"
+                    android:text="A"
+                    android:textAlignment="center"
+                    android:textAllCaps="true"
+                    android:textColor="@android:color/black"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/numberlist"
+                    android:layout_width="30dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginTop="11dp"
+                    android:text="A"
+                    android:textAlignment="center"
+                    android:textAllCaps="true"
+                    android:textColor="@color/win95"
+                    android:textSize="12sp"
+                    android:textStyle="italic" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="30dp">
+
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="9999dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginBottom="13dp"
+                    android:text="Title"
+                    android:textAllCaps="false"
+                    android:textAppearance="@style/TextAppearance.AppCompat"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginTop="9dp"
+                    android:text="Artist"
+                    android:textAppearance="@style/TextAppearance.AppCompat"
+                    android:textSize="14sp" />
+
+            </FrameLayout>
+
+
+        </LinearLayout>
+    </FrameLayout>
+
+</android.support.v7.widget.CardView>

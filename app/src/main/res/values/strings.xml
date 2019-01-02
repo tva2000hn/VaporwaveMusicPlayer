@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Vapor Music</string>
+    <string name="action_settings">Settings</string>
+    <string name="about"><u>A</u>bout</string>
+    <string name="setting"><u>S</u>ettings</string>
+    <string name="Playlist"><u>P</u>laylist</string>
+    <string name="Mode"><u>M</u>ode</string>
+    <string name="Rotate"><u>R</u>o.Lock</string>
+    <string name="RotateL"><u>R</u>otate Lock</string>
+    <string name="RotateUn"><u>R</u>o.Unlock</string>
+    <string name="RotateUnL"><u>R</u>otate Unlock</string>
+
+</resources>
